@@ -1,4 +1,4 @@
-ARG BUILD_PLATFORM=linux/amd64
+ARG BUILD_PLATFORM=linux/arm64
 
 FROM ghcr.io/knights-analytics/hugot/models:latest AS models
 

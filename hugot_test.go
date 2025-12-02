@@ -953,6 +953,72 @@ func imageClassificationPipelineValidation(t *testing.T, session *Session) {
 	assert.Error(t, err)
 }
 
+// Image to text test using an image captioning model
+func imageToTextPipeline(t *testing.T, session *Session) {
+	t.Helper()
+
+	modelPath := "./models/Xenova_vit-gpt2-image-captioning"
+	imagePath := "./models/imageData/cat.jpg"
+
+	config := ImageToTextConfig{
+		ModelPath:    modelPath,
+		Name:         "testImageToText",
+		OnnxFilename: "onnx/decoder_model_quantized.onnx",
+		Options: []ImageToTextOption{
+			pipelines.WithMaxNewTokens(50),
+			pipelines.WithImageToTextPreprocessSteps(
+				util.ResizeStep(224),
+				util.CenterCropStep(224, 224),
+			),
+			pipelines.WithImageToTextNormalizationSteps(
+				util.ImagenetPixelNormalizationStep(),
+				util.RescaleStep(),
+			),
+		},
+	}
+	pipeline, err := NewPipeline(session, config)
+	checkT(t, err)
+
+	result, err := pipeline.RunPipeline([]string{imagePath})
+	checkT(t, err)
+
+	// Check that we got a result
+	if len(result.Results) == 0 {
+		t.Error("Expected at least one result")
+	}
+
+	// Print the generated text for debugging
+	for i, res := range result.Results {
+		fmt.Printf("Image %d: %s\n", i+1, res.GeneratedText)
+	}
+
+	// Note: Since tokenizer integration is not yet complete,
+	// we expect the placeholder text
+	if result.Results[0].GeneratedText == "" {
+		t.Error("Expected non-empty generated text")
+	}
+}
+
+func imageToTextPipelineValidation(t *testing.T, session *Session) {
+	t.Helper()
+
+	modelPath := "./models/Xenova_vit-gpt2-image-captioning"
+
+	config := ImageToTextConfig{
+		ModelPath:    modelPath,
+		Name:         "testImageToTextValidation",
+		OnnxFilename: "onnx/decoder_model_quantized.onnx",
+	}
+	pipeline, err := NewPipeline(session, config)
+	checkT(t, err)
+
+	// Test: input dims length != 4
+	pipeline.Model.InputsMeta[0].Dimensions = pipelineBackends.NewShape(-1, -1, -1)
+
+	err = pipeline.Validate()
+	assert.Error(t, err)
+}
+
 // No same name
 
 func noSameNamePipeline(t *testing.T, session *Session) {

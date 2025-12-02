@@ -113,9 +113,19 @@ func LoadOnnxModelBytes(model *Model) error {
 		}
 		modelNameFound := false
 		for i := range onnxFiles {
-			if onnxFiles[i][1] == model.OnnxFilename {
+			// Compare against both just the filename and the relative path (for subdirectories)
+			// onnxFiles[i][0] is the full parent directory path, onnxFiles[i][1] is just the filename
+			// Need to construct relative path from model.Path
+			fullPath := util.PathJoinSafe(onnxFiles[i][0], onnxFiles[i][1])
+			// Normalize both paths to handle ./ prefix differences
+			normalizedModelPath := strings.TrimPrefix(model.Path, "./")
+			normalizedFullPath := strings.TrimPrefix(fullPath, "./")
+			relativePath := strings.TrimPrefix(normalizedFullPath, normalizedModelPath)
+			relativePath = strings.TrimPrefix(relativePath, "/")
+			if onnxFiles[i][1] == model.OnnxFilename || relativePath == model.OnnxFilename {
 				modelNameFound = true
 				modelOnnxFile = util.PathJoinSafe(onnxFiles[i]...)
+				break
 			}
 		}
 		if !modelNameFound {
@@ -243,6 +253,17 @@ func loadModelConfig(model *Model) error {
 				model.VocabSize = int(vocabSizeValue)
 			} else {
 				return errors.New("vocab_size is not a number")
+			}
+		} else {
+			// Check for nested decoder config (vision-encoder-decoder models)
+			if decoderConfig, exists := configMap["decoder"]; exists {
+				if decoderMap, ok := decoderConfig.(map[string]any); ok {
+					if vocabSize, exists := decoderMap["vocab_size"]; exists {
+						if vocabSizeValue, ok := vocabSize.(float64); ok {
+							model.VocabSize = int(vocabSizeValue)
+						}
+					}
+				}
 			}
 		}
 

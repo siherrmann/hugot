@@ -44,6 +44,11 @@ func getRustTokenizerOptions(inputs []InputOutputInfo) ([]tokenizers.EncodeOptio
 			encodeOptions = append(encodeOptions, tokenizers.WithReturnAttentionMask())
 		case "position_ids":
 			continue
+		case "encoder_hidden_states", "encoder_outputs", "use_cache_branch", "pixel_values":
+			// Encoder-decoder models: encoder hidden states are provided by encoder, not tokenizer
+			// use_cache_branch is a control flow input for ONNX models
+			// pixel_values is for vision encoders (image input)
+			continue
 		default:
 			if strings.HasPrefix(input.Name, "past_key_values") {
 				// handled at model level

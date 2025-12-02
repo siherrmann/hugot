@@ -18,6 +18,7 @@ type Session struct {
 	zeroShotClassificationPipelines pipelineMap[*pipelines.ZeroShotClassificationPipeline]
 	crossEncoderPipelines           pipelineMap[*pipelines.CrossEncoderPipeline]
 	imageClassificationPipelines    pipelineMap[*pipelines.ImageClassificationPipeline]
+	imageToTextPipelines            pipelineMap[*pipelines.ImageToTextPipeline]
 	textGenerationPipelines         pipelineMap[*pipelines.TextGenerationPipeline]
 	models                          map[string]*pipelineBackends.Model
 	options                         *options.Options
@@ -45,6 +46,7 @@ func newSession(backend string, opts ...options.WithOption) (*Session, error) {
 		zeroShotClassificationPipelines: map[string]*pipelines.ZeroShotClassificationPipeline{},
 		crossEncoderPipelines:           map[string]*pipelines.CrossEncoderPipeline{},
 		imageClassificationPipelines:    map[string]*pipelines.ImageClassificationPipeline{},
+		imageToTextPipelines:            map[string]*pipelines.ImageToTextPipeline{},
 		textGenerationPipelines:         map[string]*pipelines.TextGenerationPipeline{},
 		models:                          map[string]*pipelineBackends.Model{},
 		options:                         parsedOptions,
@@ -102,6 +104,12 @@ type ImageClassificationConfig = pipelineBackends.PipelineConfig[*pipelines.Imag
 // ImageClassificationOption is an option for an image classification pipeline
 type ImageClassificationOption = pipelineBackends.PipelineOption[*pipelines.ImageClassificationPipeline]
 
+// ImageToTextConfig is the configuration for an image-to-text pipeline
+type ImageToTextConfig = pipelineBackends.PipelineConfig[*pipelines.ImageToTextPipeline]
+
+// ImageToTextOption is an option for an image-to-text pipeline
+type ImageToTextOption = pipelineBackends.PipelineOption[*pipelines.ImageToTextPipeline]
+
 // TextGenerationConfig is the configuration for a text generation pipeline
 type TextGenerationConfig = pipelineBackends.PipelineConfig[*pipelines.TextGenerationPipeline]
 
@@ -157,6 +165,8 @@ func NewPipeline[T pipelineBackends.Pipeline](s *Session, pipelineConfig pipelin
 		s.crossEncoderPipelines[name] = typedPipeline
 	case *pipelines.ImageClassificationPipeline:
 		s.imageClassificationPipelines[name] = typedPipeline
+	case *pipelines.ImageToTextPipeline:
+		s.imageToTextPipelines[name] = typedPipeline
 	case *pipelines.TextGenerationPipeline:
 		s.textGenerationPipelines[name] = typedPipeline
 	default:
@@ -218,6 +228,14 @@ func InitializePipeline[T pipelineBackends.Pipeline](p T, pipelineConfig pipelin
 		}
 		pipeline = any(pipelineInitialised).(T)
 		name = config.Name
+	case *pipelines.ImageToTextPipeline:
+		config := any(pipelineConfig).(pipelineBackends.PipelineConfig[*pipelines.ImageToTextPipeline])
+		pipelineInitialised, err := pipelines.NewImageToTextPipeline(config, options, model)
+		if err != nil {
+			return pipeline, name, err
+		}
+		pipeline = any(pipelineInitialised).(T)
+		name = config.Name
 	case *pipelines.TextGenerationPipeline:
 		config := any(pipelineConfig).(pipelineBackends.PipelineConfig[*pipelines.TextGenerationPipeline])
 		pipelineInitialised, err := pipelines.NewTextGenerationPipeline(config, options, model)
@@ -270,6 +288,12 @@ func GetPipeline[T pipelineBackends.Pipeline](s *Session, name string) (T, error
 		return any(p).(T), nil
 	case *pipelines.ImageClassificationPipeline:
 		p, ok := s.imageClassificationPipelines[name]
+		if !ok {
+			return pipeline, &pipelineNotFoundError{pipelineName: name}
+		}
+		return any(p).(T), nil
+	case *pipelines.ImageToTextPipeline:
+		p, ok := s.imageToTextPipelines[name]
 		if !ok {
 			return pipeline, &pipelineNotFoundError{pipelineName: name}
 		}
@@ -348,6 +372,17 @@ func ClosePipeline[T pipelineBackends.Pipeline](s *Session, name string) error {
 		if ok {
 			model := p.Model
 			delete(s.imageClassificationPipelines, name)
+			delete(model.Pipelines, name)
+			if len(model.Pipelines) == 0 {
+				delete(s.models, model.Path)
+				return model.Destroy()
+			}
+		}
+	case *pipelines.ImageToTextPipeline:
+		p, ok := s.imageToTextPipelines[name]
+		if ok {
+			model := p.Model
+			delete(s.imageToTextPipelines, name)
 			delete(model.Pipelines, name)
 			if len(model.Pipelines) == 0 {
 				delete(s.models, model.Path)

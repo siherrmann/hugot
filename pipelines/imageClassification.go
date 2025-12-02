@@ -50,18 +50,14 @@ func (o *ImageClassificationOutput) GetOutput() []any {
 
 func WithPreprocessSteps(steps ...util.PreprocessStep) pipelineBackends.PipelineOption[*ImageClassificationPipeline] {
 	return func(p *ImageClassificationPipeline) error {
-		for _, step := range steps {
-			p.preprocessSteps = append(p.preprocessSteps, step)
-		}
+		p.preprocessSteps = append(p.preprocessSteps, steps...)
 		return nil
 	}
 }
 
 func WithNormalizationSteps(steps ...util.NormalizationStep) pipelineBackends.PipelineOption[*ImageClassificationPipeline] {
 	return func(p *ImageClassificationPipeline) error {
-		for _, step := range steps {
-			p.normalizationSteps = append(p.normalizationSteps, step)
-		}
+		p.normalizationSteps = append(p.normalizationSteps, steps...)
 		return nil
 	}
 }

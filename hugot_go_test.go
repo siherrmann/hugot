@@ -151,6 +151,28 @@ func TestImageClassificationPipelineValidationGo(t *testing.T) {
 	imageClassificationPipelineValidation(t, session)
 }
 
+// Image to text
+
+func TestImageToTextPipelineGo(t *testing.T) {
+	session, err := NewGoSession()
+	checkT(t, err)
+	defer func(session *Session) {
+		destroyErr := session.Destroy()
+		checkT(t, destroyErr)
+	}(session)
+	imageToTextPipeline(t, session)
+}
+
+func TestImageToTextPipelineValidationGo(t *testing.T) {
+	session, err := NewGoSession()
+	checkT(t, err)
+	defer func(session *Session) {
+		destroyErr := session.Destroy()
+		checkT(t, destroyErr)
+	}(session)
+	imageToTextPipelineValidation(t, session)
+}
+
 // text generation
 // func TestTextGenerationPipelineGo(t *testing.T) {
 // 	session, err := NewGoSession()
